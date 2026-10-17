@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+runtime/
+*.egg-info/
+
+# Local app state and shortcuts
+.quota-widget/
+*.lnk
+*.log
+*.tmp
+
+# Build and test output
+build/
+dist/
+*.spec
+preview.png
+preview-popup.png
+.pytest_cache/
+.coverage
+.coverage.*
+
+# OS metadata
+Thumbs.db
+.DS_Store

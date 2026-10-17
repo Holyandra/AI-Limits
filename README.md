@@ -79,4 +79,3 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development notes.
 ## License
 
 The project source code is licensed under the MIT License; see [`LICENSE`](LICENSE). This license does not grant rights to third-party trademarks or artwork in `assets/brands`.
-
