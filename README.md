@@ -17,6 +17,7 @@ Unofficial community utility. It reads quota information from the apps already i
 - Shows weekly and five-hour quota windows for Codex and Antigravity in one compact panel.
 - Refreshes automatically every 30 seconds; a tray-menu action can refresh on demand.
 - A single tray click opens a temporary panel; a double-click pins it open.
+- Optional tray-menu toggles start with Windows and prevent automatic sleep while the widget is running.
 - Shows reset countdowns in Novosibirsk time (UTC+7).
 - Uses the existing Codex and Antigravity sign-ins.
 
@@ -48,7 +49,7 @@ To add a Start menu shortcut, run:
 & ".\.venv\Scripts\python.exe" ".\app.py" --install-shortcut
 ```
 
-The tray menu can optionally add the app to the current Windows user's Startup folder. Right-click the tray icon and select **Запускать вместе с Windows** ("Start with Windows"). This is off by default and does not require administrator access.
+Right-click the tray icon to enable **Start with Windows** (off by default) or **Prevent the computer from sleeping** (also off by default; it does not keep the display on and is released when the app exits). Startup adds a shortcut to the current Windows user's Startup folder and does not require administrator access.
 
 To exit, right-click the tray icon and choose **Выход**. To stop the app from starting with Windows, uncheck **Запускать вместе с Windows** in the same menu.
 

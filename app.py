@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import math
 import os
@@ -55,6 +56,21 @@ def save_json(path, data):
     temp = path.with_suffix('.tmp')
     temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     temp.replace(path)
+
+
+def set_sleep_prevention(enabled):
+    """Keep Windows from entering idle sleep without keeping the display on."""
+    if os.name != 'nt':
+        return False
+    try:
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        set_execution_state = kernel32.SetThreadExecutionState
+        set_execution_state.argtypes = [ctypes.c_uint32]
+        set_execution_state.restype = ctypes.c_uint32
+        flags = 0x80000000 | (0x00000001 if enabled else 0)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+        return bool(set_execution_state(flags))
+    except (AttributeError, OSError):
+        return False
 
 
 def number(value):
@@ -253,6 +269,7 @@ class Monitor(QMainWindow):
         self.preferences = load_json(DATA / 'settings.json', {})
         self.interval = UPDATE_INTERVAL_SECONDS
         self.keep_open = bool(self.preferences.get('keep_open', False))
+        self.keep_awake = bool(self.preferences.get('keep_awake', False))
         self.snapshots = {}
         self.session_success = set()
         for key, entry in load_json(DATA / 'cache.json', {}).items():
@@ -375,6 +392,11 @@ class Monitor(QMainWindow):
         self.startup.setChecked(self.startup_path().exists())
         self.startup.toggled.connect(self.set_startup)
         menu.addAction(self.startup)
+        self.sleep_prevention = QAction('Не переводить компьютер в спящий режим', self)
+        self.sleep_prevention.setCheckable(True)
+        self.sleep_prevention.setChecked(self.keep_awake)
+        self.sleep_prevention.toggled.connect(self.set_keep_awake)
+        menu.addAction(self.sleep_prevention)
         menu.addSeparator()
         menu.addAction('Открыть папку программы', lambda: os.startfile(str(ROOT)))
         menu.addAction('Выход', self.quit)
@@ -382,6 +404,14 @@ class Monitor(QMainWindow):
         self.tray.activated.connect(self.tray_clicked)
         if not testing:
             self.tray.show()
+            if self.keep_awake and not set_sleep_prevention(True):
+                self.keep_awake = False
+                self.sleep_prevention.blockSignals(True)
+                self.sleep_prevention.setChecked(False)
+                self.sleep_prevention.blockSignals(False)
+                self.preferences['keep_awake'] = False
+                self.preferences_save()
+                self.tray.showMessage('AI Limits', 'Не удалось включить запрет автоматического сна.')
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         self.rebuild()
         geometry = self.preferences.get('geometry')
@@ -396,6 +426,7 @@ class Monitor(QMainWindow):
         self.timer.timeout.connect(self.tick)
         self.timer.start(5000)
         QApplication.instance().aboutToQuit.connect(self.codex.close)
+        QApplication.instance().aboutToQuit.connect(lambda: set_sleep_prevention(False))
         if not start_tray or not QSystemTrayIcon.isSystemTrayAvailable():
             self.show()
         QTimer.singleShot(0, self.tick)
@@ -404,13 +435,29 @@ class Monitor(QMainWindow):
         if self.testing:
             return
         self.preferences.pop('popup_on_top', None)
-        self.preferences.update(interval=UPDATE_INTERVAL_SECONDS, keep_open=self.keep_open, layout_version=6)
+        self.preferences.update(interval=UPDATE_INTERVAL_SECONDS, keep_open=self.keep_open,
+                                 keep_awake=self.keep_awake, layout_version=6)
         save_json(DATA / 'settings.json', self.preferences)
 
     def set_keep_open(self, enabled):
         self.keep_open = bool(enabled)
         if hasattr(self, 'popup'):
             self.popup.set_keep_open(enabled)
+        self.preferences_save()
+
+    def set_keep_awake(self, enabled):
+        enabled = bool(enabled)
+        if not self.testing and not set_sleep_prevention(enabled):
+            self.sleep_prevention.blockSignals(True)
+            self.sleep_prevention.setChecked(self.keep_awake)
+            self.sleep_prevention.blockSignals(False)
+            self.tray.showMessage('AI Limits', 'Не удалось изменить запрет автоматического сна.')
+            return
+        self.keep_awake = enabled
+        self.preferences['keep_awake'] = enabled
+        self.sleep_prevention.blockSignals(True)
+        self.sleep_prevention.setChecked(enabled)
+        self.sleep_prevention.blockSignals(False)
         self.preferences_save()
 
     def hide_dashboard(self):

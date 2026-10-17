@@ -3,11 +3,12 @@ os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 import time
 import unittest
+from unittest.mock import Mock, call, patch
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QScrollArea
 
-from app import Monitor, countdown
+from app import Monitor, countdown, set_sleep_prevention
 from providers import Quota, Snapshot
 
 APPLICATION = QApplication.instance() or QApplication([])
@@ -67,6 +68,26 @@ class WidgetTests(unittest.TestCase):
     def test_expired_reset_does_not_claim_refilled_quota(self):
         self.assertIn('ждём новое окно', countdown(100, now=200))
         self.assertIn('Сброс через', countdown(1000, now=200))
+
+    def test_sleep_prevention_sets_and_clears_only_system_idle_request(self):
+        kernel32 = Mock()
+        kernel32.SetThreadExecutionState.return_value = 1
+        with patch('app.os.name', 'nt'), patch('app.ctypes.WinDLL', return_value=kernel32, create=True):
+            self.assertTrue(set_sleep_prevention(True))
+            self.assertTrue(set_sleep_prevention(False))
+        self.assertEqual(kernel32.SetThreadExecutionState.call_args_list,
+                         [call(0x80000001), call(0x80000000)])
+
+    def test_sleep_prevention_toggle_is_checkable_and_persisted(self):
+        self.assertTrue(self.window.sleep_prevention.isCheckable())
+        with patch('app.set_sleep_prevention') as request_sleep_state, \
+             patch.object(self.window, 'preferences_save') as save_preferences:
+            self.window.set_keep_awake(True)
+        self.assertTrue(self.window.keep_awake)
+        self.assertTrue(self.window.sleep_prevention.isChecked())
+        self.assertTrue(self.window.preferences['keep_awake'])
+        request_sleep_state.assert_not_called()
+        save_preferences.assert_called_once()
 
 
 if __name__ == '__main__':
