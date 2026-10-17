@@ -6,6 +6,12 @@
 
 Unofficial community utility. It reads quota information from the apps already installed and signed in on your computer; it does not need a separate API key or send prompts to a model.
 
+## Screenshots
+
+<p align="center"><img src="assets/screenshots/dashboard.png" alt="AI Limits full dashboard" width="760"></p>
+
+<p align="center"><img src="assets/screenshots/popup.png" alt="AI Limits compact tray popup" width="320"></p>
+
 ## What it does
 
 - Shows weekly and five-hour quota windows for Codex and Antigravity in one compact panel.
