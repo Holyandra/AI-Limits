@@ -8,8 +8,6 @@ Unofficial community utility. It reads quota information from the apps already i
 
 ## Screenshots
 
-<p align="center"><img src="assets/screenshots/dashboard.png" alt="AI Limits full dashboard" width="760"></p>
-
 <p align="center"><img src="assets/screenshots/popup.png" alt="AI Limits compact tray popup" width="320"></p>
 
 ## What it does
@@ -86,3 +84,4 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development notes.
 ## License
 
 The project source code is licensed under the MIT License; see [`LICENSE`](LICENSE). This license does not grant rights to third-party trademarks or artwork in `assets/brands`.
+
