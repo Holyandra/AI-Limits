@@ -43,7 +43,7 @@ py -3.12 -m venv .venv
 & ".\.venv\Scripts\pythonw.exe" ".\app.py" --tray
 ```
 
-To add a Start menu shortcut, run:
+To add an **AI Limits** Start menu shortcut, run:
 
 ```powershell
 & ".\.venv\Scripts\python.exe" ".\app.py" --install-shortcut

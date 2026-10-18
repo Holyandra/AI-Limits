@@ -43,7 +43,7 @@ py -3.12 -m venv .venv
 & ".\.venv\Scripts\pythonw.exe" ".\app.py" --tray
 ```
 
-Чтобы создать ярлык в меню «Пуск», выполните:
+Чтобы создать ярлык **AI Limits** в меню «Пуск», выполните:
 
 ```powershell
 & ".\.venv\Scripts\python.exe" ".\app.py" --install-shortcut

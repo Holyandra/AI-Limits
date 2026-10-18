@@ -389,7 +389,7 @@ class Monitor(QMainWindow):
         menu.addAction('Обновить сейчас', self.refresh_now)
         self.startup = QAction('Запускать вместе с Windows', self)
         self.startup.setCheckable(True)
-        self.startup.setChecked(self.startup_path().exists())
+        self.startup.setChecked(self.startup_path().exists() or self.legacy_startup_path().exists())
         self.startup.toggled.connect(self.set_startup)
         menu.addAction(self.startup)
         self.sleep_prevention = QAction('Не переводить компьютер в спящий режим', self)
@@ -550,20 +550,29 @@ class Monitor(QMainWindow):
 
     @staticmethod
     def startup_path():
+        return Path(os.environ.get('APPDATA', str(Path.home()))) / 'Microsoft/Windows/Start Menu/Programs/Startup/AI Limits.lnk'
+
+    @staticmethod
+    def legacy_startup_path():
         return Path(os.environ.get('APPDATA', str(Path.home()))) / 'Microsoft/Windows/Start Menu/Programs/Startup/Quota Widget.lnk'
 
     def set_startup(self, enabled):
         path = self.startup_path()
+        legacy = self.legacy_startup_path()
         try:
             if enabled:
                 create_shortcut(path, tray=True)
-            elif path.exists():
-                path.unlink()
+                if legacy.exists():
+                    legacy.unlink()
+            else:
+                for shortcut in (path, legacy):
+                    if shortcut.exists():
+                        shortcut.unlink()
         except (OSError, subprocess.SubprocessError):
             self.startup.blockSignals(True)
-            self.startup.setChecked(path.exists())
+            self.startup.setChecked(path.exists() or legacy.exists())
             self.startup.blockSignals(False)
-            self.tray.showMessage('Квоты', 'Не удалось изменить автозапуск Windows.')
+            self.tray.showMessage('AI Limits', 'Не удалось изменить автозапуск Windows.')
 
     def refresh_now(self):
         if time.monotonic() - self.last_attempt < 3:
@@ -841,8 +850,8 @@ $s=$w.CreateShortcut($env:QUOTA_LINK)
 $s.TargetPath=$env:QUOTA_PYTHON
 $s.Arguments=$env:QUOTA_ARGS
 $s.WorkingDirectory=$env:QUOTA_ROOT
-$s.Description='Квоты Codex и Antigravity'
-$s.IconLocation=Join-Path $env:QUOTA_ROOT 'quota.ico'
+$s.Description='AI Limits'
+$s.IconLocation=Join-Path $env:QUOTA_ROOT 'ai-limits.ico'
 $s.Save()'''
     subprocess.run(['powershell', '-NoProfile', '-Command', script], check=True, env=env,
                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -871,10 +880,14 @@ def main():
     app.setQuitOnLastWindowClosed(False)
     app.setApplicationName('AI Limits')
     if args.install_shortcut:
-        icon().pixmap(64, 64).save(str(ROOT / 'quota.ico'))
+        if not icon().pixmap(64, 64).save(str(ROOT / 'ai-limits.ico')):
+            raise RuntimeError('Could not create the AI Limits shortcut icon')
         base = Path(os.environ['APPDATA']) / 'Microsoft/Windows/Start Menu/Programs'
-        create_shortcut(base / 'Квоты Codex и Antigravity.lnk')
-        create_shortcut(ROOT / 'Квоты.lnk')
+        create_shortcut(base / 'AI Limits.lnk')
+        create_shortcut(ROOT / 'AI Limits.lnk')
+        for old_shortcut in (base / 'Квоты Codex и Antigravity.lnk', ROOT / 'Квоты.lnk'):
+            if old_shortcut.exists():
+                old_shortcut.unlink()
         print('Start menu shortcut installed')
         return
     if not args.preview:
