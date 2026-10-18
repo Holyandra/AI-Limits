@@ -21,7 +21,9 @@ preview-popup.png
 .pytest_cache/
 .coverage
 .coverage.*
+/ai-limits-start.ico
 
 # OS metadata
 Thumbs.db
 .DS_Store
+
