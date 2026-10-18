@@ -233,7 +233,7 @@ class CooldownProgressBar(SegmentedProgressBar):
     def __init__(self, window, reset, parent=None):
         self.window = window
         self.reset = reset
-        super().__init__(cooldown_percent(window, reset), QColor(220, 237, 255, 135), height=2, parent=parent)
+        super().__init__(cooldown_percent(window, reset), QColor(220, 237, 255, 135), height=3, parent=parent)
 
     def update_cooldown(self, now=None):
         self.set_progress(cooldown_percent(self.window, self.reset, now))
@@ -366,7 +366,7 @@ class Monitor(QMainWindow):
         root = QWidget()
         root.setObjectName('root')
         outer = QVBoxLayout(root)
-        outer.setContentsMargins(12, 10, 12, 8)
+        outer.setContentsMargins(12, 10, 12, 7)
         outer.setSpacing(6)
         self.popup_header = QWidget()
         popup_header = QVBoxLayout(self.popup_header)
@@ -826,7 +826,7 @@ class Monitor(QMainWindow):
                     group_panel.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
                     panel_layout = QVBoxLayout(group_panel)
                     panel_layout.setContentsMargins(9, 5, 9, 5)
-                    panel_layout.setSpacing(16)
+                    panel_layout.setSpacing(18)
                     matches = [q for q in snapshot.quotas if q.group == group]
                     for window in ('Неделя', '5 часов'):
                         if not any(quota.window == window for quota in matches):
@@ -1028,6 +1028,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 
