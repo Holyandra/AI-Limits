@@ -6,9 +6,11 @@ import unittest
 from unittest.mock import Mock, call, patch
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QScrollArea
 
-from app import Monitor, countdown, set_sleep_prevention
+from app import (Monitor, SegmentedProgressBar, cooldown_percent, countdown,
+                 set_sleep_prevention, window_duration_seconds)
 from providers import Quota, Snapshot
 
 APPLICATION = QApplication.instance() or QApplication([])
@@ -69,6 +71,37 @@ class WidgetTests(unittest.TestCase):
         self.assertIn('ждём новое окно', countdown(100, now=200))
         self.assertIn('Сброс через', countdown(1000, now=200))
 
+    def test_cooldown_overlay_tracks_time_left_in_each_window(self):
+        now = 1000
+        self.assertEqual(window_duration_seconds('5 часов'), 5 * 60 * 60)
+        self.assertEqual(window_duration_seconds('Неделя'), 7 * 24 * 60 * 60)
+        self.assertEqual(window_duration_seconds('30 мин.'), 30 * 60)
+        self.assertAlmostEqual(cooldown_percent('5 часов', now + 9000, now), 50)
+        self.assertAlmostEqual(cooldown_percent('Неделя', now + 3.5 * 24 * 60 * 60, now), 50)
+        self.assertEqual(cooldown_percent('5 часов', now - 1, now), 0)
+        self.assertEqual(cooldown_percent('неизвестное окно', now + 100, now), 0)
+
+    def test_quota_fill_and_translucent_cooldown_start_from_the_right(self):
+        remaining_color = QColor('#73a75a')
+        quota_only = SegmentedProgressBar(20, remaining_color.name())
+        quota_only.resize(104, 5)
+        quota_only.show()
+        APPLICATION.processEvents()
+        quota_image = quota_only.grab().toImage()
+        self.assertEqual(quota_image.pixelColor(101, 2), remaining_color)
+        self.assertEqual(quota_image.pixelColor(4, 2), QColor('#303d54'))
+
+        cooldown = SegmentedProgressBar(20, remaining_color.name(), '5 часов', time.time() + 9000)
+        cooldown.resize(104, 5)
+        cooldown.show()
+        APPLICATION.processEvents()
+        cooldown_image = cooldown.grab().toImage()
+        self.assertAlmostEqual(cooldown.cooldown, 50, delta=0.1)
+        self.assertNotEqual(cooldown_image.pixelColor(101, 2), remaining_color)
+        self.assertEqual(cooldown_image.pixelColor(4, 2), QColor('#303d54'))
+        quota_only.close()
+        cooldown.close()
+
     def test_sleep_prevention_sets_and_clears_only_system_idle_request(self):
         kernel32 = Mock()
         kernel32.SetThreadExecutionState.return_value = 1
@@ -92,3 +125,4 @@ class WidgetTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
