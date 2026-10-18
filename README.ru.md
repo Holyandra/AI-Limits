@@ -8,8 +8,6 @@
 
 ## Скриншоты
 
-<p align="center"><img src="assets/screenshots/dashboard.png" alt="Полная панель AI Limits" width="760"></p>
-
 <p align="center"><img src="assets/screenshots/popup.png" alt="Компактное окно из системного трея" width="320"></p>
 
 ## Возможности
@@ -86,3 +84,4 @@ Antigravity предоставляет данные квот через внут
 ## Лицензия
 
 Исходный код проекта распространяется по лицензии MIT; см. [`LICENSE`](LICENSE). Она не предоставляет прав на сторонние товарные знаки и изображения в `assets/brands`.
+
