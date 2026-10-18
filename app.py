@@ -188,19 +188,16 @@ def cooldown_percent(window, reset, now=None):
 
 
 class SegmentedProgressBar(QWidget):
-    """Draw reversed quota fill with a translucent, segmented reset countdown."""
-    def __init__(self, remaining, color, window=None, reset=None, parent=None):
+    """Draw a five-part quota bar that fills from right to left."""
+    def __init__(self, remaining, color, height=5, parent=None):
         super().__init__(parent)
         self.remaining = max(0.0, min(100.0, float(remaining or 0)))
         self.fill_color = QColor(color)
-        self.window = window
-        self.reset = reset
-        self.cooldown = cooldown_percent(window or '', reset)
-        self.setFixedHeight(5)
+        self.setFixedHeight(height)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-    def update_cooldown(self, now=None):
-        self.cooldown = cooldown_percent(self.window or '', self.reset, now)
+    def set_progress(self, value):
+        self.remaining = max(0.0, min(100.0, float(value or 0)))
         self.update()
 
     def paintEvent(self, event):
@@ -211,7 +208,7 @@ class SegmentedProgressBar(QWidget):
         gap = 2.0
         segment_width = (self.width() - gap * 4) / 5
         height = float(self.height())
-        radius = 2.0
+        radius = min(2.0, height / 2)
         for part in range(5):
             x = (4 - part) * (segment_width + gap)
             track = QRectF(x, 0, segment_width, height)
@@ -228,8 +225,18 @@ class SegmentedProgressBar(QWidget):
                     painter.drawRoundedRect(filled, min(radius, fill_width / 2), radius)
 
         draw_fill(self.remaining, self.fill_color)
-        draw_fill(self.cooldown, QColor(233, 245, 255, 100))
         painter.end()
+
+
+class CooldownProgressBar(SegmentedProgressBar):
+    """A thin, translucent five-part countdown below the quota bar."""
+    def __init__(self, window, reset, parent=None):
+        self.window = window
+        self.reset = reset
+        super().__init__(cooldown_percent(window, reset), QColor(220, 237, 255, 135), height=2, parent=parent)
+
+    def update_cooldown(self, now=None):
+        self.set_progress(cooldown_percent(self.window, self.reset, now))
 
 
 class RefreshIndicator(QWidget):
@@ -708,7 +715,7 @@ class Monitor(QMainWindow):
         cell = QWidget()
         cell_layout = QVBoxLayout(cell)
         cell_layout.setContentsMargins(0, 0, 0, 0)
-        cell_layout.setSpacing(7 if not self.popup_mode else 6)
+        cell_layout.setSpacing(5 if not self.popup_mode else 4)
         metrics = QHBoxLayout()
         metrics.setSpacing(8)
         remaining = 0 if quota.disabled else quota.remaining
@@ -748,10 +755,18 @@ class Monitor(QMainWindow):
         self.reset_labels.append((reset, quota))
         metrics.addWidget(reset)
         cell_layout.addLayout(metrics)
-        bar = SegmentedProgressBar(remaining, color, quota.window, quota.reset)
-        bar.setToolTip('Цветная заливка — остаток лимита. Полупрозрачная — время до сброса.')
-        self.cooldown_bars.append(bar)
-        cell_layout.addWidget(bar)
+        progress_stack = QWidget()
+        progress_layout = QVBoxLayout(progress_stack)
+        progress_layout.setContentsMargins(0, 0, 0, 0)
+        progress_layout.setSpacing(1)
+        bar = SegmentedProgressBar(remaining, color)
+        bar.setToolTip('Остаток лимита · заполнение справа налево')
+        cooldown = CooldownProgressBar(quota.window, quota.reset)
+        cooldown.setToolTip('Полупрозрачная полоска показывает время до сброса')
+        self.cooldown_bars.append(cooldown)
+        progress_layout.addWidget(bar)
+        progress_layout.addWidget(cooldown)
+        cell_layout.addWidget(progress_stack)
         cell.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         return cell
 
@@ -1013,5 +1028,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
