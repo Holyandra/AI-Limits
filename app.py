@@ -188,7 +188,7 @@ def cooldown_percent(window, reset, now=None):
 
 
 class SegmentedProgressBar(QWidget):
-    """Draw a five-part quota bar that fills from right to left."""
+    """Draw a five-part quota bar whose remaining fill drains right to left."""
     def __init__(self, remaining, color, height=5, parent=None):
         super().__init__(parent)
         self.remaining = max(0.0, min(100.0, float(remaining or 0)))
@@ -210,17 +210,17 @@ class SegmentedProgressBar(QWidget):
         height = float(self.height())
         radius = min(2.0, height / 2)
         for part in range(5):
-            x = (4 - part) * (segment_width + gap)
+            x = part * (segment_width + gap)
             track = QRectF(x, 0, segment_width, height)
             painter.setBrush(track_color)
             painter.drawRoundedRect(track, radius, radius)
         def draw_fill(percent, color):
             for part in range(5):
-                x = (4 - part) * (segment_width + gap)
+                x = part * (segment_width + gap)
                 portion = max(0.0, min(1.0, percent / 20 - part))
                 if portion:
                     fill_width = segment_width * portion
-                    filled = QRectF(x + segment_width - fill_width, 0, fill_width, height)
+                    filled = QRectF(x, 0, fill_width, height)
                     painter.setBrush(color)
                     painter.drawRoundedRect(filled, min(radius, fill_width / 2), radius)
 
@@ -1028,6 +1028,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 
