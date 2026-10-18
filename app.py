@@ -5,6 +5,7 @@ import ctypes
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -165,14 +166,42 @@ def reset_markup(quota, now=None):
     return result + '<span style="color:#f4f6ff;font-weight:700">' + escape(duration) + '</span>'
 
 
+def window_duration_seconds(window):
+    named = {'5 часов': 5 * 60 * 60, 'Неделя': 7 * 24 * 60 * 60}
+    if window in named:
+        return named[window]
+    match = re.fullmatch(r'(\d+)\s+(дн\.|ч\.|мин\.)', window.strip())
+    if not match:
+        return 0
+    amount = int(match.group(1))
+    unit_seconds = {'дн.': 24 * 60 * 60, 'ч.': 60 * 60, 'мин.': 60}[match.group(2)]
+    return amount * unit_seconds
+
+
+def cooldown_percent(window, reset, now=None):
+    duration = window_duration_seconds(window)
+    if reset is None or duration <= 0:
+        return 0.0
+    now = time.time() if now is None else now
+    seconds_left = max(0.0, min(float(duration), float(reset) - now))
+    return seconds_left * 100 / duration
+
+
 class SegmentedProgressBar(QWidget):
-    """Draw five separated, rounded quota capsules with partial fill."""
-    def __init__(self, remaining, color, parent=None):
+    """Draw reversed quota fill with a translucent, segmented reset countdown."""
+    def __init__(self, remaining, color, window=None, reset=None, parent=None):
         super().__init__(parent)
         self.remaining = max(0.0, min(100.0, float(remaining or 0)))
         self.fill_color = QColor(color)
+        self.window = window
+        self.reset = reset
+        self.cooldown = cooldown_percent(window or '', reset)
         self.setFixedHeight(5)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def update_cooldown(self, now=None):
+        self.cooldown = cooldown_percent(self.window or '', self.reset, now)
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -184,16 +213,22 @@ class SegmentedProgressBar(QWidget):
         height = float(self.height())
         radius = 2.0
         for part in range(5):
-            x = part * (segment_width + gap)
+            x = (4 - part) * (segment_width + gap)
             track = QRectF(x, 0, segment_width, height)
             painter.setBrush(track_color)
             painter.drawRoundedRect(track, radius, radius)
-            portion = max(0.0, min(1.0, self.remaining / 20 - part))
-            if portion:
-                fill_width = segment_width * portion
-                filled = QRectF(x, 0, fill_width, height)
-                painter.setBrush(self.fill_color)
-                painter.drawRoundedRect(filled, min(radius, fill_width / 2), radius)
+        def draw_fill(percent, color):
+            for part in range(5):
+                x = (4 - part) * (segment_width + gap)
+                portion = max(0.0, min(1.0, percent / 20 - part))
+                if portion:
+                    fill_width = segment_width * portion
+                    filled = QRectF(x + segment_width - fill_width, 0, fill_width, height)
+                    painter.setBrush(color)
+                    painter.drawRoundedRect(filled, min(radius, fill_width / 2), radius)
+
+        draw_fill(self.remaining, self.fill_color)
+        draw_fill(self.cooldown, QColor(233, 245, 255, 100))
         painter.end()
 
 
@@ -291,6 +326,7 @@ class Monitor(QMainWindow):
         self.due = {'codex': 0., 'antigravity': 0.}
         self.last_attempt = 0.
         self.reset_labels = []
+        self.cooldown_bars = []
         self.age_labels = []
         self.popup_mode = False
         self.setWindowTitle('AI Limits')
@@ -712,13 +748,15 @@ class Monitor(QMainWindow):
         self.reset_labels.append((reset, quota))
         metrics.addWidget(reset)
         cell_layout.addLayout(metrics)
-        bar = SegmentedProgressBar(remaining, color)
+        bar = SegmentedProgressBar(remaining, color, quota.window, quota.reset)
+        bar.setToolTip('Цветная заливка — остаток лимита. Полупрозрачная — время до сброса.')
+        self.cooldown_bars.append(bar)
         cell_layout.addWidget(bar)
         cell.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         return cell
 
     def rebuild(self):
-        self.reset_labels, self.age_labels = [], []
+        self.reset_labels, self.cooldown_bars, self.age_labels = [], [], []
         while self.body_layout.count():
             item = self.body_layout.takeAt(0)
             if item.widget():
@@ -801,6 +839,8 @@ class Monitor(QMainWindow):
         for label, quota in self.reset_labels:
             label.setText(reset_markup(quota))
             label.setToolTip(countdown(quota.reset))
+        for bar in self.cooldown_bars:
+            bar.update_cooldown()
         for label, snapshot in self.age_labels:
             text = ('Данные устарели' if snapshot.updated else 'Нет связи') if snapshot.error else ''
             label.setText(text)
@@ -973,4 +1013,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
