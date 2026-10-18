@@ -9,8 +9,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QScrollArea
 
-from app import (Monitor, SegmentedProgressBar, cooldown_percent, countdown,
-                 set_sleep_prevention, window_duration_seconds)
+from app import (CooldownProgressBar, Monitor, SegmentedProgressBar,
+                 cooldown_percent, countdown, set_sleep_prevention,
+                 window_duration_seconds)
 from providers import Quota, Snapshot
 
 APPLICATION = QApplication.instance() or QApplication([])
@@ -50,6 +51,17 @@ class WidgetTests(unittest.TestCase):
         self.assertFalse(self.window.findChildren(QScrollArea))
         values = [v for v in self.window.findChildren(QLabel, 'quotaValue') if v.isVisible()]
         self.assertEqual(len(values), 8)
+        cooldown_bars = [bar for bar in self.window.findChildren(CooldownProgressBar) if bar.isVisible()]
+        self.assertEqual(len(cooldown_bars), 8)
+        self.assertTrue(all(bar.height() == 2 for bar in cooldown_bars))
+        for cooldown in cooldown_bars:
+            siblings = [cooldown.parentWidget().layout().itemAt(i).widget()
+                        for i in range(cooldown.parentWidget().layout().count())]
+            self.assertEqual(len(siblings), 2)
+            self.assertIs(siblings[1], cooldown)
+            self.assertIsInstance(siblings[0], SegmentedProgressBar)
+            self.assertNotIsInstance(siblings[0], CooldownProgressBar)
+            self.assertEqual(siblings[0].height(), 5)
         current_cards = [self.window.body_layout.itemAt(i).widget()
                          for i in range(self.window.body_layout.count())
                          if self.window.body_layout.itemAt(i).widget() is not None]
@@ -71,7 +83,7 @@ class WidgetTests(unittest.TestCase):
         self.assertIn('ждём новое окно', countdown(100, now=200))
         self.assertIn('Сброс через', countdown(1000, now=200))
 
-    def test_cooldown_overlay_tracks_time_left_in_each_window(self):
+    def test_cooldown_bar_tracks_time_left_in_each_window(self):
         now = 1000
         self.assertEqual(window_duration_seconds('5 часов'), 5 * 60 * 60)
         self.assertEqual(window_duration_seconds('Неделя'), 7 * 24 * 60 * 60)
@@ -81,7 +93,7 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(cooldown_percent('5 часов', now - 1, now), 0)
         self.assertEqual(cooldown_percent('неизвестное окно', now + 100, now), 0)
 
-    def test_quota_fill_and_translucent_cooldown_start_from_the_right(self):
+    def test_quota_fill_and_thin_cooldown_bar_start_from_the_right(self):
         remaining_color = QColor('#73a75a')
         quota_only = SegmentedProgressBar(20, remaining_color.name())
         quota_only.resize(104, 5)
@@ -91,14 +103,14 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(quota_image.pixelColor(101, 2), remaining_color)
         self.assertEqual(quota_image.pixelColor(4, 2), QColor('#303d54'))
 
-        cooldown = SegmentedProgressBar(20, remaining_color.name(), '5 часов', time.time() + 9000)
-        cooldown.resize(104, 5)
+        cooldown = CooldownProgressBar('5 часов', time.time() + 9000)
+        cooldown.resize(104, 2)
         cooldown.show()
         APPLICATION.processEvents()
         cooldown_image = cooldown.grab().toImage()
-        self.assertAlmostEqual(cooldown.cooldown, 50, delta=0.1)
-        self.assertNotEqual(cooldown_image.pixelColor(101, 2), remaining_color)
-        self.assertEqual(cooldown_image.pixelColor(4, 2), QColor('#303d54'))
+        self.assertAlmostEqual(cooldown.remaining, 50, delta=0.1)
+        self.assertGreater(cooldown_image.pixelColor(101, 1).lightness(), QColor('#303d54').lightness())
+        self.assertEqual(cooldown_image.pixelColor(4, 1), QColor('#303d54'))
         quota_only.close()
         cooldown.close()
 
@@ -125,4 +137,5 @@ class WidgetTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
