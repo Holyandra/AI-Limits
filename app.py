@@ -851,7 +851,7 @@ $s.TargetPath=$env:QUOTA_PYTHON
 $s.Arguments=$env:QUOTA_ARGS
 $s.WorkingDirectory=$env:QUOTA_ROOT
 $s.Description='AI Limits'
-$s.IconLocation=Join-Path $env:QUOTA_ROOT 'ai-limits.ico'
+$s.IconLocation=Join-Path $env:QUOTA_ROOT 'ai-limits-start.ico'
 $s.Save()'''
     subprocess.run(['powershell', '-NoProfile', '-Command', script], check=True, env=env,
                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -880,7 +880,8 @@ def main():
     app.setQuitOnLastWindowClosed(False)
     app.setApplicationName('AI Limits')
     if args.install_shortcut:
-        if not icon().pixmap(64, 64).save(str(ROOT / 'ai-limits.ico')):
+        # Use a distinct icon path so the Windows Start menu does not reuse a stale cached icon.
+        if not icon().pixmap(64, 64).save(str(ROOT / 'ai-limits-start.ico')):
             raise RuntimeError('Could not create the AI Limits shortcut icon')
         base = Path(os.environ['APPDATA']) / 'Microsoft/Windows/Start Menu/Programs'
         create_shortcut(base / 'AI Limits.lnk')
@@ -972,3 +973,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
