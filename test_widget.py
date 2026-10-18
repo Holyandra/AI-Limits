@@ -53,7 +53,7 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(len(values), 8)
         cooldown_bars = [bar for bar in self.window.findChildren(CooldownProgressBar) if bar.isVisible()]
         self.assertEqual(len(cooldown_bars), 8)
-        self.assertTrue(all(bar.height() == 2 for bar in cooldown_bars))
+        self.assertTrue(all(bar.height() == 3 for bar in cooldown_bars))
         for cooldown in cooldown_bars:
             siblings = [cooldown.parentWidget().layout().itemAt(i).widget()
                         for i in range(cooldown.parentWidget().layout().count())]
@@ -69,7 +69,7 @@ class WidgetTests(unittest.TestCase):
                   for panel in card.findChildren(QFrame, 'quotaGroup')]
         self.assertEqual(len(panels), 4)
         for panel in panels:
-            self.assertEqual(panel.layout().spacing(), 16)
+            self.assertEqual(panel.layout().spacing(), 18)
             windows = [panel.layout().itemAt(i).widget().findChildren(QLabel, 'quotaWindow')[0].text()
                        for i in range(2)]
             self.assertEqual(windows, ['Нед.', '5 ч.'])
@@ -137,5 +137,6 @@ class WidgetTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
 
