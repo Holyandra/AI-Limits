@@ -93,24 +93,24 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(cooldown_percent('5 часов', now - 1, now), 0)
         self.assertEqual(cooldown_percent('неизвестное окно', now + 100, now), 0)
 
-    def test_quota_fill_and_thin_cooldown_bar_start_from_the_right(self):
+    def test_quota_and_cooldown_bars_drain_from_right_to_left(self):
         remaining_color = QColor('#73a75a')
         quota_only = SegmentedProgressBar(20, remaining_color.name())
         quota_only.resize(104, 5)
         quota_only.show()
         APPLICATION.processEvents()
         quota_image = quota_only.grab().toImage()
-        self.assertEqual(quota_image.pixelColor(101, 2), remaining_color)
-        self.assertEqual(quota_image.pixelColor(4, 2), QColor('#303d54'))
+        self.assertEqual(quota_image.pixelColor(4, 2), remaining_color)
+        self.assertEqual(quota_image.pixelColor(101, 2), QColor('#303d54'))
 
         cooldown = CooldownProgressBar('5 часов', time.time() + 9000)
-        cooldown.resize(104, 2)
+        cooldown.resize(104, 3)
         cooldown.show()
         APPLICATION.processEvents()
         cooldown_image = cooldown.grab().toImage()
         self.assertAlmostEqual(cooldown.remaining, 50, delta=0.1)
-        self.assertGreater(cooldown_image.pixelColor(101, 1).lightness(), QColor('#303d54').lightness())
-        self.assertEqual(cooldown_image.pixelColor(4, 1), QColor('#303d54'))
+        self.assertGreater(cooldown_image.pixelColor(4, 1).lightness(), QColor('#303d54').lightness())
+        self.assertEqual(cooldown_image.pixelColor(101, 1), QColor('#303d54'))
         quota_only.close()
         cooldown.close()
 
@@ -137,6 +137,7 @@ class WidgetTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
 
 
